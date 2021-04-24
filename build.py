@@ -129,8 +129,11 @@ def get_id():
 
 
 def get_version():
-    tag = subprocess.check_output(["git", "describe", "--tags"]).strip()
-    return tag.lstrip("v")
+    try:
+        tag = subprocess.check_output(["git", "describe", "--tags"]).strip()
+        return tag.lstrip("v")
+    except subprocess.CalledProcessError:
+        return "unknown"
 
 
 def get_wotmod_name():
