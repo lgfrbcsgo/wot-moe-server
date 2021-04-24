@@ -19,7 +19,7 @@ def get_vehicle_dossier_descr(int_cd):
 def get_moe(int_cd):
     descr = get_vehicle_dossier_descr(int_cd)
     return MoE(
-        percentage=descr["achievements"]["damageRating"] / 100,
+        percentage=descr["achievements"]["damageRating"] / 100.0,
         damage=descr["achievements"]["movingAvgDamage"],
         battles=descr["a15x15"]["battlesCount"],
     )
