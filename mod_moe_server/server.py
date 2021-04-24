@@ -1,9 +1,11 @@
+import json
 import re
 
 from debug_utils import LOG_NOTE
 from mod_async import CallbackCancelled, async_task, auto_run, delay
 from mod_async_server import Server
-from mod_websocket_server import websocket_protocol, MessageStream
+from mod_moe_server.fetcher import get_all_moe
+from mod_websocket_server import MessageStream, websocket_protocol
 
 PORT = 15456
 
@@ -27,9 +29,7 @@ def protocol(server, stream):
     )
 
     try:
-        while True:
-            data = yield stream.receive_message()
-            yield stream.send_message(data)
+        yield stream.send_message(json.dumps(get_all_moe()))
     finally:
         LOG_NOTE(
             "{origin} ([{host}]:{port}) disconnected.".format(
