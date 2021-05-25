@@ -1,11 +1,11 @@
 import json
 import re
-from typing import List
+from typing import Dict, List
 
 from debug_utils import LOG_NOTE
 from mod_async import CallbackCancelled, async_task, auto_run, delay
 from mod_async_server import Server
-from mod_moe_server.fetcher import MoeFetcher
+from mod_moe_server.fetcher import MoE, MoeFetcher
 from mod_websocket_server import MessageStream, websocket_protocol
 
 PORT = 15456
@@ -17,7 +17,18 @@ ORIGIN_WHITELIST = [
 ]
 
 
-class MoeServerState(object):
+@auto_run
+@async_task
+def send(stream, message):
+    yield stream.send_message(json.dumps(message))
+
+
+def moe_to_dict(moe):
+    # type: (MoE) -> Dict
+    return {"percentage": moe.percentage, "damage": moe.damage, "battler": moe.battles}
+
+
+class Handlers(object):
     def __init__(self):
         self._fetcher = MoeFetcher()
         self._connections = []  # type: List[MessageStream]
@@ -42,21 +53,24 @@ class MoeServerState(object):
         if stream in self._connections:
             self._connections.remove(stream)
 
-    @auto_run
-    @async_task
-    def _on_logged_in(self, name, realm):
+    def _on_logged_in(self, username, realm):
+        message = {"type": "LOGGED_IN", "username": username, "realm": realm}
         for stream in self._connections:
-            yield stream.send_message(json.dumps(dict(name=name, realm=realm)))
+            send(stream, message)
 
-    @auto_run
-    @async_task
-    def _on_moe_update(self, data):
+    def _on_moe_update(self, vehicles):
+        message = {
+            "type": "MOE_UPDATE",
+            "vehicles": {
+                int_cd: moe_to_dict(moe) for int_cd, moe in vehicles.iteritems()
+            },
+        }
         for stream in self._connections:
-            yield stream.send_message(json.dumps(data))
+            send(stream, message)
 
 
-def create_protocol(state):
-    # type: (MoeServerState) -> ...
+def create_protocol(handlers):
+    # type: (Handlers) -> ...
 
     @websocket_protocol(allowed_origins=ORIGIN_WHITELIST)
     @async_task
@@ -65,7 +79,7 @@ def create_protocol(state):
         host, port = stream.peer_addr
         origin = stream.handshake_headers["origin"]
 
-        state.accept_connection(stream)
+        handlers.accept_connection(stream)
         LOG_NOTE(
             "{origin} ([{host}]:{port}) connected.".format(
                 origin=origin, host=host, port=port
@@ -77,7 +91,7 @@ def create_protocol(state):
                 # ignore all messages
                 yield stream.receive_message()
         finally:
-            state.handle_disconnect(stream)
+            handlers.handle_disconnect(stream)
             LOG_NOTE(
                 "{origin} ([{host}]:{port}) disconnected.".format(
                     origin=origin, host=host, port=port
@@ -96,9 +110,9 @@ class MoeServer(object):
     def serve(self):
         LOG_NOTE("Starting server on port {}".format(PORT))
 
-        state = MoeServerState()
-        state.start()
-        protocol = create_protocol(state)
+        handlers = Handlers()
+        handlers.start()
+        protocol = create_protocol(handlers)
         try:
             with Server(protocol, PORT) as server:
                 while self._keep_running and not server.closed:
@@ -107,7 +121,7 @@ class MoeServer(object):
         except CallbackCancelled:
             pass
         finally:
-            state.stop()
+            handlers.stop()
             LOG_NOTE("Stopped server")
 
     def close(self):
