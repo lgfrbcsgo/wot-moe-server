@@ -1,6 +1,7 @@
 import json
 import re
-from typing import Dict, List
+from collections import defaultdict, namedtuple
+from typing import Dict, List, Optional
 
 from debug_utils import LOG_NOTE
 from mod_async import CallbackCancelled, async_task, auto_run, delay
@@ -25,13 +26,23 @@ def send(stream, message):
 
 def moe_to_dict(moe):
     # type: (MoE) -> Dict
-    return {"percentage": moe.percentage, "damage": moe.damage, "battler": moe.battles}
+    return {"percentage": moe.percentage, "damage": moe.damage, "battles": moe.battles}
+
+
+Account = namedtuple("Account", ("username", "realm"))
+
+
+def account_to_str(account):
+    # type: (Account) -> str
+    return "{}_{}".format(account.username, account.realm)
 
 
 class Handlers(object):
     def __init__(self):
         self._fetcher = MoeFetcher()
         self._connections = []  # type: List[MessageStream]
+        self._current_account = None  # type: Optional[Account]
+        self._session = defaultdict(lambda: defaultdict(lambda: []))
 
     def start(self):
         self._fetcher.start()
@@ -47,6 +58,7 @@ class Handlers(object):
         # type: (MessageStream) -> None
         if stream not in self._connections:
             self._connections.append(stream)
+            self._send_session_message(stream)
 
     def handle_disconnect(self, stream):
         # type: (MessageStream) -> None
@@ -54,13 +66,35 @@ class Handlers(object):
             self._connections.remove(stream)
 
     def _on_logged_in(self, username, realm):
-        message = {"type": "LOGGED_IN", "username": username, "realm": realm}
-        for stream in self._connections:
-            send(stream, message)
+        # type: (str, str) -> None
+        self._current_account = Account(username, realm)
 
     def _on_moe_update(self, vehicles):
+        # type: (Dict[int, MoE]) -> None
+        for int_cd, moe in vehicles.iteritems():
+            self._session[self._current_account][int_cd].append(moe)
+
+        self._send_moe_update_message(vehicles)
+
+    def _send_session_message(self, stream):
+        # type: (MessageStream) -> None
+        message = {
+            "type": "SESSION",
+            "accounts": {
+                account_to_str(account): {
+                    int_cd: [moe_to_dict(moe) for moe in moe_values]
+                    for int_cd, moe_values in vehicles.iteritems()
+                }
+                for account, vehicles in self._session.iteritems()
+            },
+        }
+        send(stream, message)
+
+    def _send_moe_update_message(self, vehicles):
+        # type: (Dict[int, MoE]) -> None
         message = {
             "type": "MOE_UPDATE",
+            "account": account_to_str(self._current_account),
             "vehicles": {
                 int_cd: moe_to_dict(moe) for int_cd, moe in vehicles.iteritems()
             },
