@@ -73,8 +73,7 @@ class Handlers(object):
         # type: (Dict[int, MoE]) -> None
         for int_cd, moe in vehicles.iteritems():
             self._session[self._current_account][int_cd].append(moe)
-
-        self._send_moe_update_message(vehicles)
+        self._broadcast_moe_update_message(vehicles)
 
     def _send_session_message(self, stream):
         # type: (MessageStream) -> None
@@ -90,7 +89,7 @@ class Handlers(object):
         }
         send(stream, message)
 
-    def _send_moe_update_message(self, vehicles):
+    def _broadcast_moe_update_message(self, vehicles):
         # type: (Dict[int, MoE]) -> None
         message = {
             "type": "MOE_UPDATE",
