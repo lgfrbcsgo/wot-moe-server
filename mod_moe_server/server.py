@@ -42,7 +42,7 @@ class Handlers(object):
         self._fetcher = MoeFetcher()
         self._connections = []  # type: List[MessageStream]
         self._current_account = None  # type: Optional[Account]
-        self._session = defaultdict(lambda: defaultdict(lambda: []))
+        self._history = defaultdict(lambda: defaultdict(lambda: []))
 
     def start(self):
         self._fetcher.start()
@@ -72,19 +72,19 @@ class Handlers(object):
     def _on_moe_update(self, vehicles):
         # type: (Dict[int, MoE]) -> None
         for int_cd, moe in vehicles.iteritems():
-            self._session[self._current_account][int_cd].append(moe)
+            self._history[self._current_account][int_cd].append(moe)
         self._broadcast_moe_update_message(vehicles)
 
     def _send_session_message(self, stream):
         # type: (MessageStream) -> None
         message = {
-            "type": "SESSION",
+            "type": "MOE_HISTORY",
             "accounts": {
                 account_to_str(account): {
                     int_cd: [moe_to_dict(moe) for moe in moe_values]
                     for int_cd, moe_values in vehicles.iteritems()
                 }
-                for account, vehicles in self._session.iteritems()
+                for account, vehicles in self._history.iteritems()
             },
         }
         send(stream, message)
