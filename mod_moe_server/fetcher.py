@@ -62,7 +62,7 @@ class MoeFetcher(object):
 
     @safe_callback
     def _on_cache_synced(self, *_, **__):
-        if not self._account_is_player:
+        if not self._account_is_player and self._pending:
             return
 
         if self._first_sync:
