@@ -23,7 +23,7 @@ class MoeFetcher(object):
     def __init__(self):
         self.moe_fetched = Event()
         self.logged_in = Event()
-        self._pending = []
+        self._pending = set()
         self._account_is_player = False
         self._first_sync = False
 
@@ -53,7 +53,7 @@ class MoeFetcher(object):
     def _on_sys_message(self, _, message, *__, **___):
         if message.type == SYS_MESSAGE_TYPE.battleResults.index():
             vehicles = message.data["playerVehicles"].iterkeys()
-            self._pending.extend(vehicles)
+            self._pending.update(vehicles)
 
     @safe_callback
     def _on_logged_on(self, data):
@@ -71,10 +71,10 @@ class MoeFetcher(object):
             criteria = REQ_CRITERIA.INVENTORY | REQ_CRITERIA.VEHICLE.LEVELS(
                 [5, 6, 7, 8, 9, 10]
             )
-            self._pending.extend(items_cache.items.getVehicles(criteria).iterkeys())
+            self._pending.update(items_cache.items.getVehicles(criteria).iterkeys())
 
         moe = self._get_all_moe(self._pending)
-        self._pending = []
+        self._pending = set()
         self.moe_fetched(moe)
 
     @staticmethod
