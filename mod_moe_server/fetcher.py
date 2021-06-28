@@ -16,7 +16,7 @@ items_cache = dependency.instance(IItemsCache)
 connection_mgr = dependency.instance(IConnectionManager)
 
 
-MoE = namedtuple("MoE", ("percentage", "damage", "battles"))
+MoE = namedtuple("MoE", ("percentage", "damage", "marks", "battles"))
 
 
 class MoeFetcher(object):
@@ -88,6 +88,7 @@ class MoeFetcher(object):
         return MoE(
             percentage=descr["achievements"]["damageRating"] / 100.0,
             damage=descr["achievements"]["movingAvgDamage"],
+            marks=descr["achievement"]["marksOnGun"],
             battles=descr["a15x15"]["battlesCount"],
         )
 
