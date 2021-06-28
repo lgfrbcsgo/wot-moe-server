@@ -1,5 +1,3 @@
-from collections import namedtuple
-
 import dossiers2
 from chat_shared import SYS_MESSAGE_TYPE
 from constants import CURRENT_REALM
@@ -7,6 +5,7 @@ from Event import Event
 from gui.shared.utils.requesters import REQ_CRITERIA
 from helpers import dependency
 from messenger.proto.events import g_messengerEvents
+from mod_moe_server.moe import MoE
 from mod_moe_server.util import safe_callback
 from PlayerEvents import g_playerEvents
 from skeletons.connection_mgr import IConnectionManager
@@ -14,9 +13,6 @@ from skeletons.gui.shared import IItemsCache
 
 items_cache = dependency.instance(IItemsCache)
 connection_mgr = dependency.instance(IConnectionManager)
-
-
-MoE = namedtuple("MoE", ("percentage", "damage", "marks", "battles"))
 
 
 class MoeFetcher(object):

@@ -6,7 +6,8 @@ from typing import Dict, List, Optional
 from debug_utils import LOG_NOTE
 from mod_async import CallbackCancelled, async_task, auto_run, delay
 from mod_async_server import Server
-from mod_moe_server.fetcher import MoE, MoeFetcher
+from mod_moe_server.fetcher import MoeFetcher
+from mod_moe_server.moe import MoE, moe_to_dict
 from mod_websocket_server import MessageStream, websocket_protocol
 
 PORT = 15456
@@ -24,17 +25,7 @@ def send(stream, message):
     yield stream.send_message(json.dumps(message))
 
 
-def moe_to_dict(moe):
-    # type: (MoE) -> Dict
-    return {"percentage": moe.percentage, "damage": moe.damage, "battles": moe.battles}
-
-
 Account = namedtuple("Account", ("username", "realm"))
-
-
-def account_to_str(account):
-    # type: (Account) -> str
-    return "{}_{}".format(account.username, account.realm)
 
 
 class Handlers(object):
@@ -79,13 +70,17 @@ class Handlers(object):
         # type: (MessageStream) -> None
         message = {
             "type": "MOE_HISTORY",
-            "accounts": {
-                account_to_str(account): {
-                    int_cd: [moe_to_dict(moe) for moe in moe_values]
-                    for int_cd, moe_values in vehicles.iteritems()
+            "accounts": [
+                {
+                    "username": account.username,
+                    "realm": account.realm,
+                    "vehicles": {
+                        int_cd: [moe_to_dict(moe) for moe in moe_values]
+                        for int_cd, moe_values in vehicles.iteritems()
+                    },
                 }
                 for account, vehicles in self._history.iteritems()
-            },
+            ],
         }
         send(stream, message)
 
@@ -93,7 +88,8 @@ class Handlers(object):
         # type: (Dict[int, MoE]) -> None
         message = {
             "type": "MOE_UPDATE",
-            "account": account_to_str(self._current_account),
+            "username": self._current_account.username,
+            "realm": self._current_account.realm,
             "vehicles": {
                 int_cd: moe_to_dict(moe) for int_cd, moe in vehicles.iteritems()
             },
