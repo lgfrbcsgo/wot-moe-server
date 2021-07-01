@@ -84,7 +84,7 @@ class MoeFetcher(object):
         return MoE(
             percentage=descr["achievements"]["damageRating"] / 100.0,
             damage=descr["achievements"]["movingAvgDamage"],
-            marks=descr["achievement"]["marksOnGun"],
+            marks=descr["achievements"]["marksOnGun"],
             battles=descr["a15x15"]["battlesCount"],
         )
 
